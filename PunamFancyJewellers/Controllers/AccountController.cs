@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using PunamFancyJewellers.DataLayer.DataModels;
 using PunamFancyJewellers.DataLayer.ViewModels;
+using PunamFancyJewellers.Helpers.EmailHelper;
 
 namespace PunamFancyJewellers.Controllers
 {
@@ -16,11 +17,13 @@ namespace PunamFancyJewellers.Controllers
     {
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signInManager;
+        private readonly IEmailSender _emailSender;
 
-        public AccountController(UserManager<User> userManager, SignInManager<User> signInManager)
+        public AccountController(UserManager<User> userManager, SignInManager<User> signInManager, IEmailSender emailSender)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _emailSender = emailSender;
         }
 
         [HttpPost("Register")]
@@ -35,9 +38,14 @@ namespace PunamFancyJewellers.Controllers
             var result = await _userManager.CreateAsync(user, register.Password);
             if (result.Succeeded)
             {
-                //var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-
-                return Ok("User registered successfully");
+                var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code }, protocol: HttpContext.Request.Scheme);
+                AccountEmail accountEmail = new AccountEmail();
+                if (await accountEmail.SendRegistrationEmail(_emailSender, user.Email, callbackUrl))
+                {
+                    return Ok("User registered successfully");
+                }
+                return Ok("User registered successfully, but confirmation email was not sent, please try to sign in and regenrate confirmation email.");
             }
             else
             {
@@ -45,7 +53,22 @@ namespace PunamFancyJewellers.Controllers
             }
         }
 
-
+        [HttpGet]
+        public async Task<IActionResult> ConfirmEmail(string userId, string code)
+        {
+            if (code is null || userId is null) return NotFound();
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is null) return NotFound();
+            var result = await _userManager.ConfirmEmailAsync(user, code);
+            if (result.Succeeded)
+            {
+                return Ok("Email confirmed successfully.");
+            }
+            else
+            {
+                return BadRequest("Unable to confirm email");
+            }
+        }
 
         [HttpPost("Login")]
         public async Task<IActionResult> Login(LoginModel login)

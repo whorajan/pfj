@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PunamFancyJewellers.DataLayer;
 using PunamFancyJewellers.DataLayer.DataModels;
+using PunamFancyJewellers.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 var _MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
@@ -13,7 +14,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseMySQL(builder.Configuration.GetConnectionString("MySqlConnection"));
 });
-builder.Services.AddIdentity<User, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
+builder.Services.AddIdentity<User, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>().AddDefaultTokenProviders();
+builder.Services.AddCustomServices();
 builder.Services.Configure<IdentityOptions>(opt =>
 {
     opt.Password.RequiredLength = 5;
