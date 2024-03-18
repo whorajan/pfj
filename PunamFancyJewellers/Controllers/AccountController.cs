@@ -18,12 +18,14 @@ namespace PunamFancyJewellers.Controllers
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signInManager;
         private readonly IEmailSender _emailSender;
+        private readonly IAccountEmail _accountEmail;
 
-        public AccountController(UserManager<User> userManager, SignInManager<User> signInManager, IEmailSender emailSender)
+        public AccountController(UserManager<User> userManager, SignInManager<User> signInManager, IEmailSender emailSender, IAccountEmail accountEmail)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _emailSender = emailSender;
+            _accountEmail = accountEmail;
         }
 
         [HttpPost("Register")]
@@ -40,8 +42,7 @@ namespace PunamFancyJewellers.Controllers
             {
                 var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                 var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code }, protocol: HttpContext.Request.Scheme);
-                AccountEmail accountEmail = new AccountEmail();
-                if (await accountEmail.SendRegistrationEmail(_emailSender, user.Email, callbackUrl))
+                if (await _accountEmail.SendRegistrationEmailAsync(_emailSender, user.Email, callbackUrl))
                 {
                     return Ok("User registered successfully");
                 }
