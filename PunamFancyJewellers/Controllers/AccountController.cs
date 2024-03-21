@@ -40,13 +40,10 @@ namespace PunamFancyJewellers.Controllers
             var result = await _userManager.CreateAsync(user, register.Password);
             if (result.Succeeded)
             {
-                var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code }, protocol: HttpContext.Request.Scheme);
-                if (await _accountEmail.SendRegistrationEmailAsync(_emailSender, user.Email, callbackUrl))
-                {
-                    return Ok("User registered successfully");
-                }
-                return Ok("User registered successfully, but confirmation email was not sent, please try to sign in and regenrate confirmation email.");
+                if (await SendRegistrationConfirmationEmail(user))
+                    return Ok("User registered successfully, please check your email to confirm your account.");
+                else
+                    return Ok("User registered successfully, but confirmation email was not sent, please try to sign in and regenrate confirmation email.");
             }
             else
             {
@@ -77,6 +74,13 @@ namespace PunamFancyJewellers.Controllers
             var user = await _userManager.FindByEmailAsync(login.Email);
             if (user is not null)
             {
+                if (!user.EmailConfirmed)
+                {
+                    if (await SendRegistrationConfirmationEmail(user))
+                        return Ok("Please check your email to confirm your account and sign in again.");
+                    else
+                        return StatusCode((int)HttpStatusCode.InternalServerError, "Unable to send confirmation email.");
+                }
                 var result = await _signInManager.PasswordSignInAsync(user, login.Password, login.RememberMe ?? false, true);
                 if (result.Succeeded)
                 {
@@ -84,6 +88,23 @@ namespace PunamFancyJewellers.Controllers
                 }
             }
             return BadRequest("Invalid email or password");
+        }
+
+        private async Task<bool> SendRegistrationConfirmationEmail(User user)
+        {
+            string? code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            if (code is not null)
+            {
+                string? callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code }, protocol: HttpContext.Request.Scheme);
+                if (callbackUrl is not null)
+                {
+                    if (await _accountEmail.SendRegistrationEmailAsync(_emailSender, user.Email, callbackUrl))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
     }
 }

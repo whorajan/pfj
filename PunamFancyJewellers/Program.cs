@@ -22,7 +22,7 @@ builder.Services.Configure<IdentityOptions>(opt =>
     opt.Password.RequireLowercase = true;
     opt.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromSeconds(30);
     opt.Lockout.MaxFailedAccessAttempts = 5;
-    opt.SignIn.RequireConfirmedEmail = false;
+    opt.SignIn.RequireConfirmedEmail = true;
 });
 builder.Services.AddCors(options =>
 {
